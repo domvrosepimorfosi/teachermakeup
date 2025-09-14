@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excellent Teacher Qualities Poll</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .quality-radio:checked + label {
+            background-color: #34D399; /* Emerald-400 */
+            color: white;
+            border-color: #10B981; /* Emerald-500 */
+        }
+        .quality-radio:checked + label svg {
+            transform: scale(1);
+        }
+        .vote-bar-fill {
+            transition: width 0.5s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <div class="w-full max-w-2xl mx-auto p-6 md:p-8 bg-white rounded-2xl shadow-lg">
+        
+        <!-- View 1: Voting Checklist -->
+        <div id="checklist-view">
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold text-gray-800">What Makes an Excellent Teacher?</h1>
+                <p class="text-gray-600 mt-2">Select the one quality you believe is the most important (you can only choose one).</p>
+            </div>
+
+            <form id="qualities-form">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- Qualities will be dynamically inserted here -->
+                </div>
+                
+                <div class="mt-8 text-center">
+                    <button type="submit" class="w-full sm:w-auto bg-blue-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-transform transform hover:scale-105">
+                        Submit My Vote
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- View 2: Live Results -->
+        <div id="results-view" class="hidden">
+            <div class="text-center">
+                <h1 class="text-3xl font-bold text-gray-800">Live Results</h1>
+                <p class="text-gray-600 mt-2">Here are the current vote counts. The results update in real-time.</p>
+            </div>
+
+            <div id="results-list" class="mt-8 space-y-4">
+                <!-- Real-time results will be rendered here -->
+            </div>
+        </div>
+
+        <footer class="text-center text-gray-500 text-sm mt-8">
+            ✨✍️ Created by Panagiotis Domvros, English and Drama Teacher, All Rights Reserved ✍️✨
+        </footer>
+
+    </div>
+    
+    <script type="module">
+        // Import Firebase services from the CDN
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, onSnapshot, runTransaction, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Your Web App's Firebase Configuration ---
+        const firebaseConfig = {
+          apiKey: "AIzaSyDUdGybzo-AKYrKiwRmy2608pGcNIwJ_jg",
+          authDomain: "teacher-poll-app.firebaseapp.com",
+          projectId: "teacher-poll-app",
+          storageBucket: "teacher-poll-app.firebasestorage.app",
+          messagingSenderId: "755284995724",
+          appId: "1:755284995724:web:ff1e8040ede4588d6655a9"
+        };
+        const appId = firebaseConfig.projectId; // Use your project ID to create a unique path
+
+        // --- Initialize Firebase ---
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        // --- Authentication ---
+        async function authenticateUser() {
+            try {
+                // For the public version, we always sign in anonymously
+                await signInAnonymously(auth);
+            } catch (error) {
+                console.error("Authentication Error:", error);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await authenticateUser();
+            
+            const qualities = [
+                'Empathetic and Understanding', 'Passionate About Their Subject', 'Excellent Communicator',
+                'Patient and Supportive', 'Creative and Engaging', 'Strong Classroom Management',
+                'Sets High Expectations', 'Adaptable and Flexible', 'A Lifelong Learner',
+                'Provides Constructive Feedback', 'Builds Strong Relationships', 'Organized and Prepared',
+                'Fosters a Positive Culture', 'Has a Sense of Humor'
+            ];
+
+            const VOTE_COLLECTION = `/teacher_poll_votes/v1/votes`;
+            const hasVotedKey = `teacher_vote_app_${appId}`;
+
+            const checklistView = document.getElementById('checklist-view');
+            const resultsView = document.getElementById('results-view');
+            const qualitiesForm = document.getElementById('qualities-form');
+            const formContainer = document.querySelector('#qualities-form .grid');
+            const resultsList = document.getElementById('results-list');
+
+            // --- Render Voting Options ---
+            qualities.forEach((quality, index) => {
+                const id = `quality-${index}`;
+                formContainer.innerHTML += `
+                    <div class="relative">
+                        <input type="radio" id="${id}" name="qualities" value="${quality}" class="hidden quality-radio">
+                        <label for="${id}" class="flex items-center justify-between w-full p-4 text-gray-700 bg-white border-2 border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors duration-200">
+                            <span class="font-medium">${quality}</span>
+                            <svg class="w-6 h-6 text-white transition-transform duration-200 transform scale-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        </label>
+                    </div>`;
+            });
+            
+            // --- Real-time Vote Listener ---
+            const votesCollectionRef = collection(db, VOTE_COLLECTION);
+            onSnapshot(votesCollectionRef, (snapshot) => {
+                const votes = {};
+                let totalVotes = 0;
+                snapshot.docs.forEach(doc => {
+                    votes[doc.id] = doc.data().count;
+                    totalVotes += doc.data().count;
+                });
+                renderResults(votes, totalVotes);
+            });
+
+            // --- Render Results View ---
+            function renderResults(votes, totalVotes) {
+                resultsList.innerHTML = '';
+                qualities.sort((a, b) => (votes[b] || 0) - (votes[a] || 0)).forEach(quality => {
+                    const count = votes[quality] || 0;
+                    const percentage = totalVotes > 0 ? ((count / totalVotes) * 100) : 0;
+                    
+                    resultsList.innerHTML += `
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span class="text-base font-medium text-gray-700">${quality}</span>
+                                <span class="text-sm font-medium text-gray-500">${count} Votes (${percentage.toFixed(1)}%)</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-4">
+                                <div class="bg-blue-600 h-4 rounded-full vote-bar-fill" style="width: ${percentage}%"></div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            // --- Handle Vote Submission ---
+            qualitiesForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const selectedRadio = qualitiesForm.querySelector('input[name="qualities"]:checked');
+                if (!selectedRadio) {
+                    const submitButton = e.target.querySelector('button');
+                    submitButton.textContent = "Please select an option!";
+                    submitButton.classList.add('bg-red-500');
+                    setTimeout(() => {
+                        submitButton.textContent = "Submit My Vote";
+                        submitButton.classList.remove('bg-red-500');
+                    }, 2000);
+                    return;
+                }
+                
+                const selectedQuality = selectedRadio.value;
+                const docRef = doc(db, VOTE_COLLECTION, selectedQuality);
+
+                try {
+                    await runTransaction(db, async (transaction) => {
+                        const sfDoc = await transaction.get(docRef);
+                        const newCount = (sfDoc.exists() ? sfDoc.data().count : 0) + 1;
+                        transaction.set(docRef, { count: newCount }, { merge: true });
+                    });
+                    localStorage.setItem(hasVotedKey, 'true');
+                    showResultsView();
+                } catch (error) {
+                    console.error("Transaction failed: ", error);
+                }
+            });
+
+            // --- UI View Management ---
+            const showChecklistView = () => {
+                resultsView.classList.add('hidden');
+                checklistView.classList.remove('hidden');
+            };
+            const showResultsView = () => {
+                checklistView.classList.add('hidden');
+                resultsView.classList.remove('hidden');
+            };
+
+            // --- Initial View Check ---
+            if (localStorage.getItem(hasVotedKey)) {
+                showResultsView();
+            } else {
+                showChecklistView();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -21,15 +21,17 @@
         .vote-bar-fill {
             transition: width 0.5s ease-in-out;
         }
+        .content-container {
+            transition: opacity 0.3s ease-in-out;
+        }
     </style>
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen">
-    <div class="w-full max-w-2xl mx-auto p-6 md:p-8 bg-white rounded-2xl shadow-lg">
+    <div id="main-content" class="w-full max-w-2xl mx-auto p-6 md:p-8 bg-white rounded-2xl shadow-lg content-container opacity-0">
         
-        <!-- View 1: Voting Checklist -->
         <div id="checklist-view">
             <div class="text-center mb-8">
-                <h1 class="text-3xl font-bold text-gray-800">What Makes an Excellent Teacher?</h1>
+                <h1 id="main-header" class="text-3xl font-bold text-gray-800">What Makes an Excellent Teacher?</h1>
                 <p class="text-gray-600 mt-2">Select the one quality you believe is the most important (you can only choose one).</p>
             </div>
 
@@ -46,10 +48,9 @@
             </form>
         </div>
 
-        <!-- View 2: Live Results -->
         <div id="results-view" class="hidden">
             <div class="text-center">
-                <h1 class="text-3xl font-bold text-gray-800">Live Results</h1>
+                <h1 id="results-header" class="text-3xl font-bold text-gray-800">Live Results</h1>
                 <p class="text-gray-600 mt-2">Here are the current vote counts. The results update in real-time.</p>
             </div>
 
@@ -58,42 +59,47 @@
             </div>
         </div>
 
-        <footer class="text-center text-gray-500 text-sm mt-8">
+        <footer id="footer" class="text-center text-gray-500 text-sm mt-8 cursor-pointer">
             ✨✍️ Created by Panagiotis Domvros, English and Drama Teacher, All Rights Reserved ✍️✨
         </footer>
+    </div>
 
+    <!-- Admin Modal (hidden by default) -->
+    <div id="admin-modal" class="fixed inset-0 bg-gray-900 bg-opacity-60 hidden flex items-center justify-center p-4">
+        <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-sm text-center">
+            <h2 class="text-2xl font-bold mb-4 text-gray-800">Admin Access</h2>
+            <p class="text-gray-600 mb-6">Enter the password to reset all votes.</p>
+            <input type="password" id="admin-password" class="w-full border border-gray-300 rounded-lg p-3 text-center" placeholder="Password">
+            <p id="admin-message" class="text-red-500 text-sm my-4 h-5"></p>
+            <div class="flex justify-center space-x-4">
+                <button id="cancel-reset" class="w-1/2 bg-gray-200 text-gray-700 font-bold py-3 px-6 rounded-lg hover:bg-gray-300">Cancel</button>
+                <button id="confirm-reset" class="w-1/2 bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700">Confirm</button>
+            </div>
+        </div>
     </div>
     
     <script type="module">
-        // Import Firebase services from the CDN
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, onSnapshot, runTransaction, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, onSnapshot, runTransaction, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- Your Web App's Firebase Configuration ---
+        // CORRECTED firebaseConfig with the right appId
         const firebaseConfig = {
           apiKey: "AIzaSyDUdGybzo-AKYrKiwRmy2608pGcNIwJ_jg",
           authDomain: "teacher-poll-app.firebaseapp.com",
           projectId: "teacher-poll-app",
           storageBucket: "teacher-poll-app.firebasestorage.app",
           messagingSenderId: "755284995724",
-          appId: "1:755284995724:web:ff1e8040ede4588d6655a9"
+          appId: "1:755284995724:web:ff1e8040ede4588d6655a9" 
         };
-        const appId = firebaseConfig.projectId; // Use your project ID to create a unique path
+        const appId = firebaseConfig.projectId;
 
-        // --- Initialize Firebase ---
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
 
-        // --- Authentication ---
         async function authenticateUser() {
-            try {
-                // For the public version, we always sign in anonymously
-                await signInAnonymously(auth);
-            } catch (error) {
-                console.error("Authentication Error:", error);
-            }
+            try { await signInAnonymously(auth); } catch (error) { console.error("Authentication Error:", error); }
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
@@ -110,76 +116,50 @@
             const VOTE_COLLECTION = `/teacher_poll_votes/v1/votes`;
             const hasVotedKey = `teacher_vote_app_${appId}`;
 
+            const mainContent = document.getElementById('main-content');
             const checklistView = document.getElementById('checklist-view');
             const resultsView = document.getElementById('results-view');
             const qualitiesForm = document.getElementById('qualities-form');
             const formContainer = document.querySelector('#qualities-form .grid');
             const resultsList = document.getElementById('results-list');
+            const footer = document.getElementById('footer');
+            
+            const adminModal = document.getElementById('admin-modal');
+            const adminPasswordInput = document.getElementById('admin-password');
+            const adminMessage = document.getElementById('admin-message');
+            const confirmResetBtn = document.getElementById('confirm-reset');
+            const cancelResetBtn = document.getElementById('cancel-reset');
 
-            // --- Render Voting Options ---
             qualities.forEach((quality, index) => {
                 const id = `quality-${index}`;
-                formContainer.innerHTML += `
-                    <div class="relative">
-                        <input type="radio" id="${id}" name="qualities" value="${quality}" class="hidden quality-radio">
-                        <label for="${id}" class="flex items-center justify-between w-full p-4 text-gray-700 bg-white border-2 border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors duration-200">
-                            <span class="font-medium">${quality}</span>
-                            <svg class="w-6 h-6 text-white transition-transform duration-200 transform scale-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                        </label>
-                    </div>`;
+                formContainer.innerHTML += `<div class="relative"><input type="radio" id="${id}" name="qualities" value="${quality}" class="hidden quality-radio"><label for="${id}" class="flex items-center justify-between w-full p-4 text-gray-700 bg-white border-2 border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors duration-200"><span class="font-medium">${quality}</span><svg class="w-6 h-6 text-white transition-transform duration-200 transform scale-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></label></div>`;
             });
             
-            // --- Real-time Vote Listener ---
             const votesCollectionRef = collection(db, VOTE_COLLECTION);
             onSnapshot(votesCollectionRef, (snapshot) => {
                 const votes = {};
                 let totalVotes = 0;
-                snapshot.docs.forEach(doc => {
-                    votes[doc.id] = doc.data().count;
-                    totalVotes += doc.data().count;
-                });
+                snapshot.docs.forEach(doc => { votes[doc.id] = doc.data().count; totalVotes += doc.data().count; });
                 renderResults(votes, totalVotes);
             });
 
-            // --- Render Results View ---
             function renderResults(votes, totalVotes) {
                 resultsList.innerHTML = '';
                 qualities.sort((a, b) => (votes[b] || 0) - (votes[a] || 0)).forEach(quality => {
                     const count = votes[quality] || 0;
                     const percentage = totalVotes > 0 ? ((count / totalVotes) * 100) : 0;
-                    
-                    resultsList.innerHTML += `
-                        <div>
-                            <div class="flex justify-between mb-1">
-                                <span class="text-base font-medium text-gray-700">${quality}</span>
-                                <span class="text-sm font-medium text-gray-500">${count} Votes (${percentage.toFixed(1)}%)</span>
-                            </div>
-                            <div class="w-full bg-gray-200 rounded-full h-4">
-                                <div class="bg-blue-600 h-4 rounded-full vote-bar-fill" style="width: ${percentage}%"></div>
-                            </div>
-                        </div>
-                    `;
+                    resultsList.innerHTML += `<div><div class="flex justify-between mb-1"><span class="text-base font-medium text-gray-700">${quality}</span><span class="text-sm font-medium text-gray-500">${count} Votes (${percentage.toFixed(1)}%)</span></div><div class="w-full bg-gray-200 rounded-full h-4"><div class="bg-blue-600 h-4 rounded-full vote-bar-fill" style="width: ${percentage}%"></div></div></div>`;
                 });
             }
 
-            // --- Handle Vote Submission ---
             qualitiesForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const selectedRadio = qualitiesForm.querySelector('input[name="qualities"]:checked');
                 if (!selectedRadio) {
-                    const submitButton = e.target.querySelector('button');
-                    submitButton.textContent = "Please select an option!";
-                    submitButton.classList.add('bg-red-500');
-                    setTimeout(() => {
-                        submitButton.textContent = "Submit My Vote";
-                        submitButton.classList.remove('bg-red-500');
-                    }, 2000);
                     return;
                 }
-                
                 const selectedQuality = selectedRadio.value;
                 const docRef = doc(db, VOTE_COLLECTION, selectedQuality);
-
                 try {
                     await runTransaction(db, async (transaction) => {
                         const sfDoc = await transaction.get(docRef);
@@ -188,28 +168,67 @@
                     });
                     localStorage.setItem(hasVotedKey, 'true');
                     showResultsView();
-                } catch (error) {
-                    console.error("Transaction failed: ", error);
+                } catch (error) { console.error("Transaction failed: ", error); }
+            });
+            
+            let adminClickCount = 0;
+            let adminClickTimer = null;
+            footer.addEventListener('click', () => {
+                adminClickCount++;
+                clearTimeout(adminClickTimer);
+                adminClickTimer = setTimeout(() => { adminClickCount = 0; }, 1500);
+                if (adminClickCount >= 5) {
+                    adminClickCount = 0;
+                    adminPasswordInput.value = '';
+                    adminMessage.textContent = '';
+                    adminModal.classList.remove('hidden');
                 }
             });
 
-            // --- UI View Management ---
-            const showChecklistView = () => {
-                resultsView.classList.add('hidden');
-                checklistView.classList.remove('hidden');
-            };
-            const showResultsView = () => {
-                checklistView.classList.add('hidden');
-                resultsView.classList.remove('hidden');
-            };
+            cancelResetBtn.addEventListener('click', () => adminModal.classList.add('hidden'));
 
-            // --- Initial View Check ---
-            if (localStorage.getItem(hasVotedKey)) {
+            confirmResetBtn.addEventListener('click', async () => {
+                if (adminPasswordInput.value === "teacher") {
+                    adminMessage.textContent = 'Resetting votes...';
+                    adminMessage.classList.remove('text-red-500');
+                    adminMessage.classList.add('text-green-500');
+                    
+                    try {
+                        const querySnapshot = await getDocs(votesCollectionRef);
+                        const deletePromises = querySnapshot.docs.map(doc => deleteDoc(doc.ref));
+                        await Promise.all(deletePromises);
+                        
+                        localStorage.removeItem(hasVotedKey);
+                        adminMessage.textContent = 'Success! Votes cleared.';
+                        
+                        setTimeout(() => {
+                            adminModal.classList.add('hidden');
+                            showChecklistView();
+                        }, 2000);
+
+                    } catch (error) {
+                        console.error("Error clearing votes: ", error);
+                        adminMessage.textContent = "Error during reset.";
+                        adminMessage.classList.add('text-red-500');
+                    }
+                } else {
+                    adminMessage.textContent = 'Incorrect password.';
+                    adminPasswordInput.value = '';
+                }
+            });
+
+            const showChecklistView = () => { resultsView.classList.add('hidden'); checklistView.classList.remove('hidden'); };
+            const showResultsView = () => { checklistView.classList.add('hidden'); resultsView.classList.remove('hidden'); };
+
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('view') === 'results') {
                 showResultsView();
             } else {
-                showChecklistView();
+                if (localStorage.getItem(hasVotedKey)) { showResultsView(); } else { showChecklistView(); }
             }
+            mainContent.classList.remove('opacity-0');
         });
     </script>
 </body>
 </html>
+

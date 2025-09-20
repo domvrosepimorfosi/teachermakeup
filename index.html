@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="el">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Excellent Teacher Qualities Poll</title>
+    <title>Δημοσκόπηση: Ιδιότητες Εξαιρετικού Εκπαιδευτικού</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -19,40 +19,46 @@
         
         <div id="checklist-view">
             <div class="text-center mb-8">
-                <h1 id="main-header" class="text-3xl font-bold text-gray-800">What Makes an Excellent Teacher?</h1>
-                <p id="sub-header" class="text-gray-600 mt-2">Select the one quality you believe is the most important (you can only choose one).</p>
+                <h1 id="main-header" class="text-3xl font-bold text-gray-800"></h1>
+                <p id="sub-header" class="text-gray-600 mt-2"></p>
             </div>
             <form id="qualities-form">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
                 <div class="mt-8 text-center">
-                    <button type="submit" class="w-full sm:w-auto bg-blue-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-transform transform hover:scale-105">Submit My Vote</button>
+                    <button id="submit-button" type="submit" class="w-full sm:w-auto bg-blue-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-transform transform hover:scale-105"></button>
                 </div>
             </form>
         </div>
 
         <div id="results-view" class="hidden">
             <div class="text-center">
-                <h1 id="results-header" class="text-3xl font-bold text-gray-800">Live Results</h1>
-                <p class="text-gray-600 mt-2">Here are the current vote counts. The results update in real-time.</p>
+                <h1 id="results-header" class="text-3xl font-bold text-gray-800"></h1>
+                <p id="results-sub-header" class="text-gray-600 mt-2"></p>
             </div>
             <div id="results-list" class="mt-8 space-y-4"></div>
         </div>
+        
+        <div id="language-switcher" class="flex justify-center items-center space-x-3 mt-10">
+            <span id="lang-el" class="cursor-pointer font-semibold text-blue-600">ΕΛ</span>
+            <div class="w-10 h-5 bg-gray-300 rounded-full flex items-center p-1 cursor-pointer" id="lang-toggle-bg">
+                <div class="w-3.5 h-3.5 bg-white rounded-full shadow-md transform transition-transform duration-300" id="lang-toggle-dot"></div>
+            </div>
+            <span id="lang-en" class="cursor-pointer font-normal text-gray-500">EN</span>
+        </div>
 
-        <footer id="footer" class="text-center text-gray-500 text-sm mt-8 cursor-pointer">
-            ✨✍️ Created by Panagiotis Domvros, English and Drama Teacher, All Rights Reserved ✍️✨
+        <footer id="footer" class="text-center text-gray-500 text-sm mt-6 cursor-pointer">
         </footer>
     </div>
 
-    <!-- Admin Modal -->
     <div id="admin-modal" class="fixed inset-0 bg-gray-900 bg-opacity-60 hidden flex items-center justify-center p-4">
         <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-sm text-center">
-            <h2 class="text-2xl font-bold mb-4 text-gray-800">Admin Access</h2>
-            <p class="text-gray-600 mb-6">Enter the password to reset all votes.</p>
-            <input type="password" id="admin-password" class="w-full border border-gray-300 rounded-lg p-3 text-center" placeholder="Password">
+            <h2 id="admin-header" class="text-2xl font-bold mb-4 text-gray-800"></h2>
+            <p id="admin-sub-header" class="text-gray-600 mb-6"></p>
+            <input type="password" id="admin-password" class="w-full border border-gray-300 rounded-lg p-3 text-center">
             <p id="admin-message" class="text-red-500 text-sm my-4 h-5"></p>
             <div class="flex justify-center space-x-4">
-                <button id="cancel-reset" class="w-1/2 bg-gray-200 text-gray-700 font-bold py-3 px-6 rounded-lg hover:bg-gray-300">Cancel</button>
-                <button id="confirm-reset" class="w-1/2 bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700">Confirm</button>
+                <button id="cancel-reset" class="w-1/2 bg-gray-200 text-gray-700 font-bold py-3 px-6 rounded-lg hover:bg-gray-300"></button>
+                <button id="confirm-reset" class="w-1/2 bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700"></button>
             </div>
         </div>
     </div>
@@ -73,8 +79,6 @@
             rules_version = '2';
             service cloud.firestore {
               match /databases/{database}/documents {
-                // This rule allows the app to read/write/delete both the votes
-                // and the poll status document, which is required for the app to function.
                 match /teacher_poll_votes/v1/{document=**} {
                   allow read, write, delete;
                 }
@@ -99,11 +103,67 @@
 
         document.addEventListener('DOMContentLoaded', async () => {
             await authenticateUser();
-            const qualities = ['Empathetic and Understanding', 'Passionate About Their Subject', 'Excellent Communicator', 'Patient and Supportive', 'Creative and Engaging', 'Strong Classroom Management', 'Sets High Expectations', 'Adaptable and Flexible', 'A Lifelong Learner', 'Provides Constructive Feedback', 'Builds Strong Relationships', 'Organized and Prepared', 'Fosters a Positive Culture', 'Has a Sense of Humor'];
+            
+            const translations = {
+                en: {
+                    lang: 'en',
+                    title: 'Excellent Teacher Qualities Poll',
+                    mainHeader: 'What Makes an Excellent Teacher?',
+                    subHeader: 'Select the one quality you believe is the most important (you can only choose one).',
+                    submitButton: 'Submit My Vote',
+                    resultsHeader: 'Live Results',
+                    resultsSubHeader: 'Here are the current vote counts. The results update in real-time.',
+                    footer: '✨✍️ Created by Panagiotis Domvros, English and Drama Teacher, All Rights Reserved ✍️✨',
+                    adminHeader: 'Admin Access',
+                    adminSubHeader: 'Enter the password to reset all votes.',
+                    passwordPlaceholder: 'Password',
+                    cancelButton: 'Cancel',
+                    confirmButton: 'Confirm',
+                    votesText: 'Votes',
+                    couldNotLoad: 'Could not load results. Check security rules.',
+                    incorrectPassword: 'Incorrect password.',
+                    resetting: 'Resetting...',
+                    resetSuccess: 'Success! Votes cleared.',
+                    resetError: 'Error during reset.',
+                    configError: 'Configuration Error',
+                    configErrorSub: 'Could not connect to the poll. Please copy the security rules from the comment at the top of the script into your Firebase project settings.',
+                    qualities: ['Empathetic and Understanding', 'Passionate About Their Subject', 'Excellent Communicator', 'Patient and Supportive', 'Creative and Engaging', 'Strong Classroom Management', 'Sets High Expectations', 'Adaptable and Flexible', 'A Lifelong Learner', 'Provides Constructive Feedback', 'Builds Strong Relationships', 'Organized and Prepared', 'Fosters a Positive Culture', 'Has a Sense of Humor']
+                },
+                el: {
+                    lang: 'el',
+                    title: 'Δημοσκόπηση: Ιδιότητες Εξαιρετικού Εκπαιδευτικού',
+                    mainHeader: 'Τι Κάνει έναν Εκπαιδευτικό Εξαιρετικό;',
+                    subHeader: 'Επιλέξτε την ιδιότητα που θεωρείτε πιο σημαντική (μπορείτε να επιλέξετε μόνο μία).',
+                    submitButton: 'Υποβολή Ψήφου',
+                    resultsHeader: 'Ζωντανά Αποτελέσματα',
+                    resultsSubHeader: 'Εδώ φαίνονται οι τρέχουσες ψήφοι. Τα αποτελέσματα ενημερώνονται σε πραγματικό χρόνο.',
+                    footer: '✨✍️ Δημιουργήθηκε από τον Παναγιώτη Δόμβρο, Καθηγητή Αγγλικών και Θεατρικής Αγωγής, Με την επιφύλαξη παντός δικαιώματος ✍️✨',
+                    adminHeader: 'Πρόσβαση Διαχειριστή',
+                    adminSubHeader: 'Εισαγάγετε τον κωδικό πρόσβασης για επαναφορά όλων των ψήφων.',
+                    passwordPlaceholder: 'Κωδικός Πρόσβασης',
+                    cancelButton: 'Άκυρο',
+                    confirmButton: 'Επιβεβαίωση',
+                    votesText: 'Ψήφοι',
+                    couldNotLoad: 'Αδυναμία φόρτωσης αποτελεσμάτων. Ελέγξτε τους κανόνες ασφαλείας.',
+                    incorrectPassword: 'Λανθασμένος κωδικός.',
+                    resetting: 'Γίνεται επαναφορά...',
+                    resetSuccess: 'Επιτυχία! Οι ψήφοι μηδενίστηκαν.',
+                    resetError: 'Σφάλμα κατά την επαναφορά.',
+                    configError: 'Σφάλμα Διαμόρφωσης',
+                    configErrorSub: 'Αδύνατη η σύνδεση στη δημοσκόπηση. Παρακαλώ αντιγράψτε τους κανόνες ασφαλείας από το σχόλιο στην αρχή του script στις ρυθμίσεις του Firebase project σας.',
+                    qualities: ['Ενσυναίσθηση και Κατανόηση', 'Πάθος για το Αντικείμενό του/της', 'Εξαιρετικές Επικοινωνιακές Δεξιότητες', 'Υπομονή και Υποστήριξη', 'Δημιουργικότητα και Ενδιαφέρον', 'Ισχυρή Διαχείριση Τάξης', 'Υψηλές Προσδοκίες', 'Προσαρμοστικότητα και Ευελιξία', 'Δια Βίου Μάθηση', 'Παρέχει Εποικοδομητική Ανατροφοδότηση', 'Χτίζει Ισχυρές Σχέσεις', 'Οργάνωση και Προετοιμασία', 'Καλλιεργεί Θετικό Κλίμα', 'Αίσθηση του Χιούμορ']
+                }
+            };
+            
+            let currentLang = localStorage.getItem('pollLanguage') || 'el';
+            let currentVotes = {};
+            let currentTotalVotes = 0;
+
             const VOTE_COLLECTION_PATH = `/teacher_poll_votes/v1/votes`;
             const POLL_STATE_PATH = `/teacher_poll_votes/v1/status`;
             const voteStateKey = `teacher_vote_state_${appId}`;
 
+            // Get all DOM elements
             const mainContent = document.getElementById('main-content');
             const checklistView = document.getElementById('checklist-view');
             const resultsView = document.getElementById('results-view');
@@ -116,30 +176,111 @@
             const adminMessage = document.getElementById('admin-message');
             const confirmResetBtn = document.getElementById('confirm-reset');
             const cancelResetBtn = document.getElementById('cancel-reset');
+            
+            // Text elements for translation
+            const htmlEl = document.documentElement;
+            const titleEl = document.querySelector('title');
             const mainHeader = document.getElementById('main-header');
             const subHeader = document.getElementById('sub-header');
+            const submitButton = document.getElementById('submit-button');
+            const resultsHeader = document.getElementById('results-header');
+            const resultsSubHeader = document.getElementById('results-sub-header');
+            const adminHeader = document.getElementById('admin-header');
+            const adminSubHeader = document.getElementById('admin-sub-header');
 
-            qualities.forEach((q, i) => { formContainer.innerHTML += `<div class="relative"><input type="radio" id="q-${i}" name="q" value="${q}" class="hidden quality-radio"><label for="q-${i}" class="flex items-center justify-between w-full p-4 text-gray-700 bg-white border-2 border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50"><span class="font-medium">${q}</span><svg class="w-6 h-6 text-white transition-transform duration-200 transform scale-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></label></div>`; });
+            // Language switcher elements
+            const langToggleBg = document.getElementById('lang-toggle-bg');
+            const langToggleDot = document.getElementById('lang-toggle-dot');
+            const langEl = document.getElementById('lang-el');
+            const langEn = document.getElementById('lang-en');
 
+            const renderQualities = (lang) => {
+                formContainer.innerHTML = '';
+                const qualitiesToRender = translations[lang].qualities;
+                const qualityValues = translations.en.qualities; // Use English for value/ID
+                qualitiesToRender.forEach((q, i) => {
+                    formContainer.innerHTML += `<div class="relative"><input type="radio" id="q-${i}" name="q" value="${qualityValues[i]}" class="hidden quality-radio"><label for="q-${i}" class="flex items-center justify-between w-full p-4 text-gray-700 bg-white border-2 border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50"><span class="font-medium">${q}</span><svg class="w-6 h-6 text-white transition-transform duration-200 transform scale-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></label></div>`;
+                });
+            };
+            
+            const renderResults = (votes, totalVotes, lang) => {
+                resultsList.innerHTML = '';
+                const qualityValues = translations.en.qualities;
+                const qualityDisplayNames = translations[lang].qualities;
+                const qualityMap = qualityValues.reduce((acc, curr, index) => {
+                    acc[curr] = qualityDisplayNames[index];
+                    return acc;
+                }, {});
+
+                const sortedQualities = [...qualityValues].sort((a, b) => (votes[b] || 0) - (votes[a] || 0));
+                
+                sortedQualities.forEach(q => {
+                    const count = votes[q] || 0;
+                    const perc = totalVotes > 0 ? (count / totalVotes) * 100 : 0;
+                    const displayName = qualityMap[q];
+                    resultsList.innerHTML += `<div><div class="flex justify-between mb-1"><span class="text-base font-medium text-gray-700">${displayName}</span><span class="text-sm font-medium text-gray-500">${count} ${translations[lang].votesText} (${perc.toFixed(1)}%)</span></div><div class="w-full bg-gray-200 rounded-full h-4"><div class="bg-blue-600 h-4 rounded-full vote-bar-fill" style="width: ${perc}%"></div></div></div>`;
+                });
+            };
+
+            const setLanguage = (lang) => {
+                localStorage.setItem('pollLanguage', lang);
+                currentLang = lang;
+                const t = translations[lang];
+
+                // Update UI elements
+                htmlEl.lang = t.lang;
+                titleEl.textContent = t.title;
+                mainHeader.textContent = t.mainHeader;
+                subHeader.textContent = t.subHeader;
+                submitButton.textContent = t.submitButton;
+                resultsHeader.textContent = t.resultsHeader;
+                resultsSubHeader.textContent = t.resultsSubHeader;
+                footer.textContent = t.footer;
+                adminHeader.textContent = t.adminHeader;
+                adminSubHeader.textContent = t.adminSubHeader;
+                adminPasswordInput.placeholder = t.passwordPlaceholder;
+                cancelResetBtn.textContent = t.cancelButton;
+                confirmResetBtn.textContent = t.confirmButton;
+                
+                // Update toggle style
+                if (lang === 'el') {
+                    langToggleDot.style.transform = 'translateX(0px)';
+                    langEl.classList.add('font-semibold', 'text-blue-600');
+                    langEl.classList.remove('font-normal', 'text-gray-500');
+                    langEn.classList.add('font-normal', 'text-gray-500');
+                    langEn.classList.remove('font-semibold', 'text-blue-600');
+                } else {
+                    langToggleDot.style.transform = 'translateX(20px)';
+                    langEn.classList.add('font-semibold', 'text-blue-600');
+                    langEn.classList.remove('font-normal', 'text-gray-500');
+                    langEl.classList.add('font-normal', 'text-gray-500');
+                    langEl.classList.remove('font-semibold', 'text-blue-600');
+                }
+                
+                // Re-render dynamic content
+                renderQualities(lang);
+                renderResults(currentVotes, currentTotalVotes, lang);
+            };
+            
+            // Event listeners for language switcher
+            langToggleBg.addEventListener('click', () => setLanguage(currentLang === 'el' ? 'en' : 'el'));
+            langEl.addEventListener('click', () => setLanguage('el'));
+            langEn.addEventListener('click', () => setLanguage('en'));
+
+            // Firestore logic
             const votesCollectionRef = collection(db, VOTE_COLLECTION_PATH);
             const pollStateRef = doc(db, POLL_STATE_PATH, 'poll_state');
 
             onSnapshot(votesCollectionRef, snap => {
                 const votes = {}; let totalVotes = 0;
                 snap.docs.forEach(doc => { votes[doc.id] = doc.data().count; totalVotes += doc.data().count; });
-                renderResults(votes, totalVotes);
+                currentVotes = votes;
+                currentTotalVotes = totalVotes;
+                renderResults(currentVotes, currentTotalVotes, currentLang);
             }, (error) => {
                  console.error("Firestore snapshot error:", error);
-                 resultsList.innerHTML = `<p class="text-center text-red-500">Could not load results. Check security rules.</p>`;
+                 resultsList.innerHTML = `<p class="text-center text-red-500">${translations[currentLang].couldNotLoad}</p>`;
             });
-
-            function renderResults(votes, totalVotes) {
-                resultsList.innerHTML = '';
-                qualities.sort((a, b) => (votes[b] || 0) - (votes[a] || 0)).forEach(q => {
-                    const count = votes[q] || 0; const perc = totalVotes > 0 ? (count / totalVotes) * 100 : 0;
-                    resultsList.innerHTML += `<div><div class="flex justify-between mb-1"><span class="text-base font-medium text-gray-700">${q}</span><span class="text-sm font-medium text-gray-500">${count} Votes (${perc.toFixed(1)}%)</span></div><div class="w-full bg-gray-200 rounded-full h-4"><div class="bg-blue-600 h-4 rounded-full vote-bar-fill" style="width: ${perc}%"></div></div></div>`;
-                });
-            }
 
             qualitiesForm.addEventListener('submit', async e => {
                 e.preventDefault();
@@ -157,7 +298,8 @@
                     showResultsView();
                 } catch (err) { console.error("Vote failed:", err); }
             });
-
+            
+            // Admin modal logic
             let clicks = 0, timer = null;
             footer.addEventListener('click', () => {
                 clicks++; clearTimeout(timer); timer = setTimeout(() => { clicks = 0; }, 1500);
@@ -166,8 +308,8 @@
             cancelResetBtn.addEventListener('click', () => adminModal.classList.add('hidden'));
 
             confirmResetBtn.addEventListener('click', async () => {
-                if (adminPasswordInput.value !== "teacher") { adminMessage.textContent = 'Incorrect password.'; adminPasswordInput.value = ''; return; }
-                adminMessage.textContent = 'Resetting...'; adminMessage.classList.remove('text-red-500'); adminMessage.classList.add('text-green-500');
+                if (adminPasswordInput.value !== "teacher") { adminMessage.textContent = translations[currentLang].incorrectPassword; adminPasswordInput.value = ''; return; }
+                adminMessage.textContent = translations[currentLang].resetting; adminMessage.classList.remove('text-red-500'); adminMessage.classList.add('text-green-500');
                 try {
                     const pollStateSnap = await getDoc(pollStateRef);
                     const newVersion = (pollStateSnap.exists() ? pollStateSnap.data().version : 1) + 1;
@@ -176,14 +318,17 @@
                     await Promise.all(deletePromises);
                     await setDoc(pollStateRef, { version: newVersion });
                     localStorage.removeItem(voteStateKey);
-                    adminMessage.textContent = 'Success! Votes cleared.';
+                    adminMessage.textContent = translations[currentLang].resetSuccess;
                     setTimeout(() => { adminModal.classList.add('hidden'); showChecklistView(); }, 2000);
-                } catch (err) { console.error("Reset Error:", err); adminMessage.textContent = "Error during reset."; adminMessage.classList.add('text-red-500'); }
+                } catch (err) { console.error("Reset Error:", err); adminMessage.textContent = translations[currentLang].resetError; adminMessage.classList.add('text-red-500'); }
             });
 
             const showChecklistView = () => { resultsView.classList.add('hidden'); checklistView.classList.remove('hidden'); };
             const showResultsView = () => { checklistView.classList.add('hidden'); resultsView.classList.remove('hidden'); };
-
+            
+            // Initial view logic
+            setLanguage(currentLang);
+            
             try {
                 const urlParams = new URLSearchParams(window.location.search);
                 if (urlParams.get('view') === 'results') {
@@ -201,8 +346,8 @@
                 }
             } catch (error) {
                 console.error("Firebase permission error:", error);
-                mainHeader.textContent = "Configuration Error";
-                subHeader.innerHTML = "Could not connect to the poll. Please copy the security rules from the comment at the top of the script into your Firebase project settings.";
+                mainHeader.textContent = translations[currentLang].configError;
+                subHeader.innerHTML = translations[currentLang].configErrorSub;
                 showChecklistView();
             }
             
@@ -211,4 +356,3 @@
     </script>
 </body>
 </html>
-
